@@ -45,10 +45,25 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          script: true
+          script_stop: true
+          script: |
             docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" -p "${{ secrets.DOCKERHUB_TOKEN }}"
             docker pull ${{ env.IMAGE_NAME }}:latest
             docker stop page1 || true
             docker rm page1 || true
-            docker run -d --name page1 --restart always -p 8080:80 ${{ env.IMAGE_NAME }}:latest
+            docker run -d \
+              --name page1 \
+              --restart always \
+              -p 8080:3000 \
+              -e DB_HOST="${{ secrets.DB_HOST }}" \
+              -e DB_PORT="5432" \
+              -e DB_USER="${{ secrets.DB_USER }}" \
+              -e DB_PASSWORD="${{ secrets.DB_PASSWORD }}" \
+              -e DB_NAME="${{ secrets.DB_NAME }}" \
+              -e JWT_SECRET="${{ secrets.JWT_SECRET }}" \
+              --read-only \
+              --tmpfs /tmp \
+              --cap-drop ALL \
+              --security-opt no-new-privileges \
+              ${{ env.IMAGE_NAME }}:latest
             docker logout

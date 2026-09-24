@@ -1,0 +1,85 @@
+:root {
+  --ink: #1c1f1a;
+  --paper: #f2efe4;
+  --line: #3f4a34;
+  --accent: #6f7d4f;
+  --error: #a13d3d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Georgia, 'Iowan Old Style', serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.card {
+  max-width: 440px;
+  width: 100%;
+  border: 1px solid var(--line);
+  padding: 2.5rem 2.75rem;
+  background: var(--paper);
+}
+
+h1 {
+  font-size: 1.75rem;
+  line-height: 1.15;
+  margin: 0 0 1.5rem 0;
+  font-weight: 400;
+  border-bottom: 2px solid var(--ink);
+  padding-bottom: .75rem;
+}
+
+label {
+  display: block;
+  font-size: .85rem;
+  margin-bottom: .35rem;
+  color: var(--accent);
+}
+
+input {
+  width: 100%;
+  padding: .6rem .7rem;
+  margin-bottom: 1.1rem;
+  border: 1px solid var(--line);
+  background: #fff;
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+button {
+  width: 100%;
+  padding: .7rem;
+  background: var(--ink);
+  color: var(--paper);
+  border: none;
+  font-family: inherit;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button:hover { background: var(--accent); }
+
+p.note {
+  margin-top: 1.25rem;
+  font-size: .9rem;
+  text-align: center;
+}
+
+p.note a { color: var(--accent); }
+
+.message {
+  margin-bottom: 1rem;
+  font-size: .9rem;
+  min-height: 1.2em;
+}
+
+.message.error { color: var(--error); }
+.message.success { color: var(--accent); }

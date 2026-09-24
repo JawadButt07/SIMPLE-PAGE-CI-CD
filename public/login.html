@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="card">
+    <h1>Log in</h1>
+    <p id="message" class="message"></p>
+    <form id="login-form">
+      <label for="email">Email</label>
+      <input type="email" id="email" required>
+      <label for="password">Password</label>
+      <input type="password" id="password" required>
+      <button type="submit">Log in</button>
+    </form>
+    <p class="note">No account yet? <a href="signup.html">Sign up</a></p>
+  </div>
+
+  <script>
+    const form = document.getElementById('login-form');
+    const message = document.getElementById('message');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      message.textContent = '';
+      message.className = 'message';
+
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          message.textContent = data.error || 'Something went wrong.';
+          message.className = 'message error';
+          return;
+        }
+
+        window.location.href = 'dashboard.html';
+      } catch {
+        message.textContent = 'Could not reach the server. Please try again.';
+        message.className = 'message error';
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="card">
+    <h1>You're logged in</h1>
+    <p id="info">Loading your account...</p>
+    <button id="logout">Log out</button>
+  </div>
+
+  <script>
+    const info = document.getElementById('info');
+
+    (async () => {
+      try {
+        const res = await fetch('/api/me');
+        if (!res.ok) {
+          window.location.href = 'login.html';
+          return;
+        }
+        const user = await res.json();
+        info.textContent = `Signed in as ${user.email}.`;
+      } catch {
+        info.textContent = 'Could not load account details.';
+      }
+    })();
+
+    document.getElementById('logout').addEventListener('click', async () => {
+      await fetch('/api/logout', { method: 'POST' });
+      window.location.href = 'login.html';
+    });
+  </script>
+</body>
+</html>
