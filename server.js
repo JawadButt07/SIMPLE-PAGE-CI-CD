@@ -1,9 +1,11 @@
 const express = require('express');
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
 const { Pool } = require('pg');
+const Redis = require('ioredis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,9 +25,73 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+const redis = new Redis({
+  host: process.env.REDIS_HOST || 'redis',
+  port: process.env.REDIS_PORT || 6379,
+  lazyConnect: true,
+  retryStrategy: () => null,
+});
+
+redis.on('error', (err) => console.error('Redis error:', err.message));
+
+const CACHE_TTL_SECONDS = 300; // 5 minutes
+const PUBLIC_DIR = path.join(__dirname, 'public');
+
+async function cachedStaticFile(filePath, contentType, res) {
+  const cacheKey = `static:${filePath}`;
+
+  try {
+    if (redis.status === 'wait') await redis.connect().catch(() => {});
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      console.log(`[CACHE HIT] ${filePath} — ${new Date().toISOString()}`);
+      res.set('X-Cache', 'HIT');
+      res.type(contentType).send(cached);
+      return;
+    }
+  } catch {
+    // Redis unavailable — fall through to disk read below
+  }
+
+  const content = fs.readFileSync(filePath, 'utf8');
+  console.log(`[CACHE MISS] ${filePath} — ${new Date().toISOString()}`);
+  res.set('X-Cache', 'MISS');
+  res.type(contentType).send(content);
+
+  redis.setex(cacheKey, CACHE_TTL_SECONDS, content).catch(() => {});
+}
+
 app.use(express.json());
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
+
+app.get('/', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'index.html'), 'text/html', res));
+app.get('/signup.html', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'signup.html'), 'text/html', res));
+app.get('/login.html', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'login.html'), 'text/html', res));
+app.get('/dashboard.html', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'dashboard.html'), 'text/html', res));
+app.get('/style.css', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'style.css'), 'text/css', res));
+
+app.get('/blocked.html', (req, res) => {
+  res.status(403).send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Access Restricted</title>
+<style>
+  body{margin:0;min-height:100vh;background:#f2efe4;color:#1c1f1a;font-family:Georgia,'Iowan Old Style',serif;display:flex;align-items:center;justify-content:center;padding:2rem;}
+  .card{max-width:480px;width:100%;border:1px solid #3f4a34;padding:2.5rem 2.75rem;text-align:center;}
+  h1{font-size:1.6rem;font-weight:400;margin:0 0 1rem 0;border-bottom:2px solid #1c1f1a;padding-bottom:.75rem;}
+  p{line-height:1.6;font-size:1rem;color:#6f7d4f;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Access Restricted by Owner</h1>
+    <p>This site is not available in your region. Access is currently limited to specific countries.</p>
+  </div>
+</body>
+</html>`);
+});
 
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
 
