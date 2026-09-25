@@ -72,26 +72,6 @@ app.get('/style.css', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'styl
 
 app.get('/blocked.html', (req, res) => {
   res.status(403).send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Access Restricted</title>
-<style>
-  body{margin:0;min-height:100vh;background:#f2efe4;color:#1c1f1a;font-family:Georgia,'Iowan Old Style',serif;display:flex;align-items:center;justify-content:center;padding:2rem;}
-  .card{max-width:480px;width:100%;border:1px solid #3f4a34;padding:2.5rem 2.75rem;text-align:center;}
-  h1{font-size:1.6rem;font-weight:400;margin:0 0 1rem 0;border-bottom:2px solid #1c1f1a;padding-bottom:.75rem;}
-  p{line-height:1.6;font-size:1rem;color:#6f7d4f;}
-</style>
-</head>
-<body>
-  <div class="card">
-    <h1>Access Restricted by Owner</h1>
-    <p>This site is not available in your region. Access is currently limited to specific countries.</p>
-  </div>
-</body>
-</html>`);
-});
 
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
 
