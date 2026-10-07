@@ -57,6 +57,7 @@ jobs:
 
             run_container() {
               docker run -d --name $NAME --restart always -p 8081:3000 \
+                --network appnet \
                 --env-file $ENVFILE \
                 --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
                 "$1"
