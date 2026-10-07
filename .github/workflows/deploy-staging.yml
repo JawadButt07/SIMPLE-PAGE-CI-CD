@@ -17,7 +17,7 @@ jobs:
       - name: Create version tag
         id: ver
         run: |
-          TAG="v1.0.${{ github.run_number }}-staging"
+          TAG="v1.0.${{ github.run_number }}-staging-${{ github.sha }}"
           git tag "$TAG"
           git push origin "$TAG"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
