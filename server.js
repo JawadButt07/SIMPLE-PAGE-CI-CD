@@ -71,7 +71,8 @@ app.get('/dashboard.html', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 
 app.get('/style.css', (req, res) => cachedStaticFile(path.join(PUBLIC_DIR, 'style.css'), 'text/css', res));
 
 app.get('/blocked.html', (req, res) => {
-  res.status(403).send(`<!DOCTYPE html>
+  res.status(403).send("<!DOCTYPE html><html><body><h1>Blocked</h1></body></html>");
+});
 
 app.get('/healthz', (req, res) => res.status(200).send('ok'));
 
