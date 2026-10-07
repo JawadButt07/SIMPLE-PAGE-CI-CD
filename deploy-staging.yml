@@ -1,0 +1,87 @@
+name: Tag, Build and Deploy (staging)
+on:
+  push:
+    branches: [staging_master]
+permissions:
+  contents: write
+concurrency: staging-deploy
+env:
+  IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/simple-page
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+
+      - name: Create version tag
+        id: ver
+        run: |
+          TAG="v1.0.${{ github.run_number }}-staging"
+          git tag "$TAG"
+          git push origin "$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.ver.outputs.tag }}
+            ${{ env.IMAGE }}:${{ github.sha }}
+
+      - name: Deploy to EC2 with health check and auto rollback
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          TAG: ${{ steps.ver.outputs.tag }}
+          IMAGE: ${{ env.IMAGE }}
+          HUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+          HUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: TAG,IMAGE,HUB_USER,HUB_TOKEN
+          script_stop: false
+          script: |
+            NAME=page-staging
+            ENVFILE=/opt/simple-page/staging.env
+            NEW="$IMAGE:$TAG"
+            PREV=$(docker inspect -f '{{.Config.Image}}' $NAME 2>/dev/null || true)
+
+            run_container() {
+              docker run -d --name $NAME --restart always -p 8081:3000 \
+                --env-file $ENVFILE \
+                --read-only --tmpfs /tmp --cap-drop ALL --security-opt no-new-privileges \
+                "$1"
+            }
+
+            echo "$HUB_TOKEN" | docker login -u "$HUB_USER" --password-stdin
+            docker pull "$NEW" || { echo "Pull failed"; exit 1; }
+            docker rm -f $NAME 2>/dev/null || true
+            run_container "$NEW"
+
+            for i in $(seq 1 12); do
+              if curl -fsS http://127.0.0.1:8081/healthz >/dev/null; then
+                echo "HEALTH OK on $NEW (previous: ${PREV:-none})"
+                docker logout
+                exit 0
+              fi
+              sleep 5
+            done
+
+            echo "HEALTH CHECK FAILED. Logs:"
+            docker logs --tail 30 $NAME
+            docker rm -f $NAME
+            if [ -n "$PREV" ]; then
+              echo "Rolling back to $PREV"
+              run_container "$PREV"
+            fi
+            docker logout
+            exit 1

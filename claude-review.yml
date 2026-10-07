@@ -1,0 +1,36 @@
+name: Claude PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [staging_master]
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 1 }
+      - uses: anthropics/claude-code-action@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            Review pull request #${{ github.event.pull_request.number }} in ${{ github.repository }}.
+            Read it with `gh pr diff` and `gh pr view`. Check for: bugs, security issues
+            (injection, hardcoded secrets, auth/JWT mistakes), missing dependencies in package.json,
+            Dockerfile problems, and risky changes to .github/ workflows.
+            Post a short summary with `gh pr comment`.
+            Then give ONE final verdict with `gh pr review`:
+            - No blocking problems: `gh pr review ${{ github.event.pull_request.number }} --approve --body "Claude: approved"`
+            - Any bug, security issue or risky change: `gh pr review ${{ github.event.pull_request.number }} --request-changes --body "Claude: <reason>"`
+            Never approve changes under .github/; request human review instead.
+          claude_args: >-
+            --allowedTools "Bash(gh pr diff:*),Bash(gh pr view:*),Bash(gh pr comment:*),Bash(gh pr review:*)"
+      - name: Enable auto-merge (merges only after required checks and approval)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge ${{ github.event.pull_request.number }} --auto --squash --repo ${{ github.repository }}
